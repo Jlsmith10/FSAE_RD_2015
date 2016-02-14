@@ -44,7 +44,7 @@ MA 02111-1307, USA
 
 
 
-void  INThandler(int sig)
+void INThandler(int sig)
 {
     signal(sig, SIG_IGN);
     exit(0);
@@ -67,29 +67,11 @@ int timeval_subtract(struct timeval *result, struct timeval *t2, struct timeval 
 
 int main(int argc, char *argv[])
 {
-
-    float rate_gyr_y = 0.0;   // [deg/s]
-    float rate_gyr_x = 0.0;    // [deg/s]
-    float rate_gyr_z = 0.0;     // [deg/s]
-
     int  accRaw[3];
-    int  magRaw[3];
     int  gyrRaw[3];
-
-
-
-    float gyroXangle = 0.0;
-    float gyroYangle = 0.0;
-    float gyroZangle = 0.0;
-    float AccYangle = 0.0;
-    float AccXangle = 0.0;
-    float AccZangle = 0.0;
-    float CFangleX = 0.0;
-    float CFangleY = 0.0;
 
     int startInt  = mymillis();
     struct  timeval tvBegin, tvEnd,tvDiff;
-
 
     signal(SIGINT, INThandler);
 
@@ -97,8 +79,10 @@ int main(int argc, char *argv[])
 
     gettimeofday(&tvBegin, NULL);
 
+    //get real time clock info -> fopen a file with the date as its name with "a"
 
-    while(1)
+
+    while(1)//run until the button is pressed
     {
         startInt = mymillis();
 
@@ -107,65 +91,20 @@ int main(int argc, char *argv[])
         readACC(accRaw);
         readGYR(gyrRaw);
 
-        /*//Convert Gyro raw to degrees per second      This is unedited
-          rate_gyr_x = (float) gyrRaw[0] * G_GAIN;
-          rate_gyr_y = (float) gyrRaw[1]  * G_GAIN;
-          rate_gyr_z = (float) gyrRaw[2]  * G_GAIN;*/
+        //fwrite(accRaw, sizeof(int), 3, theFile)
+        //fwrite(gyrRaw, sizeof(int), 3, theFile)
+        //write the time????
 
-        //Convert Gyro raw to degrees per second
-        rate_gyr_x = (float) (gyrRaw[0] - 40) * G_GAIN;
-        rate_gyr_y = (float) (gyrRaw[1] - 13)  * G_GAIN;
-        rate_gyr_z = (float) (gyrRaw[2] + 60)  * G_GAIN;
-
-
-
-        //Calculate the angles from the gyro
-        gyroXangle+=rate_gyr_x*DT;
-        gyroYangle+=rate_gyr_y*DT;
-        gyroZangle+=rate_gyr_z*DT;
-
-
-
-
-        //Convert Accelerometer values to degrees
-        AccXangle = (float) (atan2(accRaw[1],accRaw[2])+M_PI)*RAD_TO_DEG;
-        AccYangle = (float) (atan2(accRaw[2],accRaw[0])+M_PI)*RAD_TO_DEG;
-        AccZangle = (float) (atan2(accRaw[0],accRaw[1])+M_PI)*RAD_TO_DEG;
-
-        //Change the rotation value of the accelerometer to -/+ 180 and move the Y axis '0' point to up.
-        //Two different pieces of code are used depending on how your IMU is mounted.
-        //If IMU is upside down
-        /*
-           if (AccXangle >180)
-           AccXangle -= (float)360.0;
-
-           AccYangle-=90;
-           if (AccYangle >180)
-           AccYangle -= (float)360.0;
-           */
-
-        //If IMU is up the correct way, use these lines
-        AccXangle -= (float)180.0;
-        if (AccYangle > 90)
-            AccYangle -= (float)270;
-        else
-            AccYangle += (float)90;
-
-
-        //Complementary filter used to combine the accelerometer and gyro values.
-        CFangleX=AA*(CFangleX+rate_gyr_x*DT) +(1 - AA) * AccXangle;
-        CFangleY=AA*(CFangleY+rate_gyr_y*DT) +(1 - AA) * AccYangle;
-
-
-        printf ("   GyroX  %7.3f \t AccXangle \e[m %7.3f \t \033[22;31mCFangleX %7.3f\033[0m\t GyroY  %7.3f \t AccYangle %7.3f \t AccZangle %7.3f \t \033[22;36mCFangleY %7.3f\t\033[0m\n",gyroXangle,AccXangle,CFangleX,gyroYangle,AccYangle, AccZangle, CFangleY);
 
         //Each loop should be at least 20ms.
         while(mymillis() - startInt < (DT*1000))
         {
-            usleep(100);
+            usleep(100); //arg in microsec
         }
 
         printf("Loop Time %d\t", mymillis()- startInt);
     }
+
+    // fclose file that was opened
 }
 
