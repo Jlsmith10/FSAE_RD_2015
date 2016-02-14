@@ -1,27 +1,3 @@
-/*
-This program  reads the angles from the accelerometer and gyroscope
-on a BerryIMU connected to a Raspberry Pi.
-http://ozzmaker.com/
-
-
-Copyright (C) 2014  Mark Williams
-
-This library is free software; you can redistribute it and/or
-modify it under the terms of the GNU Library General Public
-License as published by the Free Software Foundation; either
-version 2 of the License, or (at your option) any later version.
-This library is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-Library General Public License for more details.
-You should have received a copy of the GNU Library General Public
-License along with this library; if not, write to the Free
-Software Foundation, Inc., 59 Temple Place - Suite 330, Boston,
-MA 02111-1307, USA
-*/
-
-
-
 #include <unistd.h>
 #include <math.h>
 #include <signal.h>
@@ -40,8 +16,6 @@ MA 02111-1307, USA
 #define G_GAIN 0.070     // [deg/s/LSB]
 #define RAD_TO_DEG 57.29578
 #define M_PI 3.14159265358979323846
-
-
 
 
 void INThandler(int sig)
@@ -73,6 +47,8 @@ int main(int argc, char *argv[])
     int startInt  = mymillis();
     struct  timeval tvBegin, tvEnd,tvDiff;
 
+    FILE *theFile;
+
     signal(SIGINT, INThandler);
 
     enableIMU();
@@ -80,7 +56,9 @@ int main(int argc, char *argv[])
     gettimeofday(&tvBegin, NULL);
 
     //get real time clock info -> fopen a file with the date as its name with "a"
-
+    theFile = fopen("testFile", "a");
+    
+    //startInt = mymillis();
 
     while(1)//run until the button is pressed
     {
@@ -91,8 +69,9 @@ int main(int argc, char *argv[])
         readACC(accRaw);
         readGYR(gyrRaw);
 
-        //fwrite(accRaw, sizeof(int), 3, theFile)
-        //fwrite(gyrRaw, sizeof(int), 3, theFile)
+        //binary data printed
+        fwrite(accRaw, sizeof(int), 3, theFile);
+        fwrite(gyrRaw, sizeof(int), 3, theFile)
         //write the time????
 
 
