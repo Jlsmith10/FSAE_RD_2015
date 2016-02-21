@@ -24,33 +24,22 @@ void INThandler(int sig)
     exit(0);
 }
 
-int myMicro();
-
-int myMicro()
+int myMillis()
 {
     struct timeval tv;
     gettimeofday(&tv, NULL);
 
     //tv.sec is the time from 1970 and tv_usec is microseconds which according
     //to the api are not to accurate
-    return (tv.tv_sec)*1000000 + (tv.tv_usec);
+    return (tv.tv_sec)*1000 + (tv.tv_usec)/1000;
 }
-
-/*int timeval_subtract(struct timeval *result, struct timeval *t2, struct timeval *t1)
-{
-    long int diff = (t2->tv_usec + 1000000 * t2->tv_sec) - (t1->tv_usec + 1000000 * t1->tv_sec);
-    result->tv_sec = diff / 1000000;
-    result->tv_usec = diff % 1000000;
-    return (diff<0);
-}*/
 
 int main(int argc, char *argv[])
 {
     int  accRaw[3];
     int  gyrRaw[3];
 
-    int startInt  = myMicro();
-    struct  timeval tvBegin, tvEnd,tvDiff;
+    struct timeval tvBegin, tvEnd, tvDiff;
 
     FILE *theFile;
 
@@ -60,34 +49,47 @@ int main(int argc, char *argv[])
 
     gettimeofday(&tvBegin, NULL);
 
-    //get REAL TIME CLOCK info -> fopen a file with the date as its name with "a"
-    theFile = fopen("dataFiles/testFile", "w");
+    time_t fileNameTimer = time(NULL);
+    struct tm tm = *localtime(&fileNameTimer);
     
-    //startInt = myMicro();
+    char buf[28];//worst case date
+    sprintf(buf, "dataFiles/");
+    sprintf(buf, "%s%d-", buf, tm.tm_mon+1);
+    sprintf(buf, "%s%d-", buf, tm.tm_mday);
+    sprintf(buf, "%s%d-", buf, tm.tm_year+1900);
+    sprintf(buf, "%s%d:", buf, tm.tm_hour);
+    sprintf(buf, "%s%d:", buf, tm.tm_min);
+    sprintf(buf, "%s%d", buf, tm.tm_sec);
+    sprintf(buf, "%s.txt", buf);
+
+    theFile = fopen(buf, "w");
+    
+    int loopStartInt  = myMillis();
+    int beginInt = myMillis();
 
     while(1)//run until the button is pressed
     {
-        startInt = myMicro();
+        loopStartInt = myMillis();
 
         //read ACC and GYR data
         readACC(accRaw);
         readGYR(gyrRaw);
 
-        //writing accRaw[0], accRaw[1], accRaw[2]
-        //then gyrRaw[0], gyrRaw[1], gyrRaw[2]
-        //then the time difference
-        fprintf(theFile, "%d %d %d %d %d %d %d\n", accRaw[0], accRaw[1], accRaw[2], gyrRaw[0], gyrRaw[1], gyrRaw[2], (myMicro() - startInt));
-
-        //Each loop should be at least 20ms.
-        while(myMicro() - startInt < (DT*100000))
+        //Each loop should be at least 20ms - imu can only read at this sampling
+        //rate apparently
+        while(myMillis() - loopStartInt < (DT*1000))
         {
-            printf("%s", "sleeping");
-            fflush(stdout);
             usleep(100); //arg in microsec
         }
+
+        //writing accRaw[0], accRaw[1], accRaw[2]
+        //then gyrRaw[0], gyrRaw[1], gyrRaw[2]
+        //then the time difference from before the while loop in milliseconds
+        fprintf(theFile, "%d %d %d %d %d %d %d\n", accRaw[0], accRaw[1], accRaw[2], gyrRaw[0], gyrRaw[1], gyrRaw[2], (myMillis() - beginInt));
 
     }
 
     // fclose file that was opened
+    return fclose(theFile);
 }
 
