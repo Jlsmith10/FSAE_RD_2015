@@ -121,10 +121,9 @@ int main(int argc, char *argv[])
         {
            AccYangle -= (float)360.0;
         }
-           
 
-/*
         //If IMU is up the correct way, use these lines
+        /*
         AccXangle -= (float)180.0;
         if (AccYangle > 90)
         {
@@ -134,7 +133,7 @@ int main(int argc, char *argv[])
         {
             AccYangle += (float)90;
         }
-*/
+        */
 
         //Complementary filter used to combine the accelerometer and gyro values.
         CFangleX = AA * (CFangleX+rate_gyr_x*DT) +(1 - AA) * AccXangle;
@@ -148,8 +147,8 @@ int main(int argc, char *argv[])
         }
         else if (biasLoopCount == 601)
         {
-            CFangleX_biasAverage = CFangleX_bias/(599-400);
-            CFangleY_biasAverage = CFangleY_bias/(599-400);
+            CFangleX_biasAverage = CFangleX_bias/(200);
+            CFangleY_biasAverage = CFangleY_bias/(200);
         }
 
 
@@ -159,8 +158,13 @@ int main(int argc, char *argv[])
             usleep(100); //arg in microsec
         }
 
-        //fprintf(theFile, "%7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %d\n", gyroXangle, gyroYangle, AccXangle, AccYangle, CFangleX, CFangleY, (myMillis() - beginInt));
-        printf("%d: %7.3f %7.3f %7.3f %7.3f\n", biasLoopCount++, CFangleX, CFangleX_biasAverage, CFangleY, CFangleY_biasAverage);
+        //gyroXangle, gyroYangle, AccXangle, AccYangle, real CFangleX, real CFangleY,
+        //(time from beginning)
+        fprintf(theFile, "%7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %d\n",
+            gyroXangle, gyroYangle, AccXangle, AccYangle,
+            CFangleX - CFangleX_biasAverage, CFangleY - CFangleY_biasAverage,
+            (myMillis() - beginInt));
+        //printf("%d: %7.3f %7.3f\n", biasLoopCount, CFangleX - CFangleX_biasAverage, CFangleY - CFangleY_biasAverage);
 
         
 }
