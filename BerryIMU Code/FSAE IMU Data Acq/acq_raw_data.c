@@ -39,15 +39,33 @@ int main(int argc, char *argv[])
     int  accRaw[3];
     int  gyrRaw[3];
 
-    struct timeval tvBegin, tvEnd, tvDiff;
+    float rate_gyr_x = 0.0;
+    float rate_gyr_y = 0.0;
+    float rate_gyr_z = 0.0;
+
+    float gyroXangle = 0.0;
+    float gyroYangle = 0.0;
+    float gyroZangle = 0.0;
+    float AccYangle = 0.0;
+    float AccXangle = 0.0;
+    float AccZangle = 0.0;
+    float CFangleX = 0.0;
+    float CFangleY = 0.0;
+
+    float CFangleX_bias = 0.0;
+    float CFangleY_bias = 0.0;
+    float CFangleX_biasAverage = 0.0;
+    float CFangleY_biasAverage = 0.0;
+    int biasLoopCount = 0;
 
     FILE *theFile;
 
+
+    struct timeval tvBegin, tvEnd, tvDiff;
     signal(SIGINT, INThandler);
-
     enableIMU();
-
     gettimeofday(&tvBegin, NULL);
+
 
     time_t fileNameTimer = time(NULL);
     struct tm tm = *localtime(&fileNameTimer);
@@ -75,19 +93,77 @@ int main(int argc, char *argv[])
         readACC(accRaw);
         readGYR(gyrRaw);
 
-        //Each loop should be at least 20ms - imu can only read at this sampling
-        //rate apparently
+        //convert to degrees/second
+        rate_gyr_x = (float) gyrRaw[0] * G_GAIN;
+        rate_gyr_y = (float) gyrRaw[1]  * G_GAIN;
+        rate_gyr_z = (float) gyrRaw[2]  * G_GAIN;
+
+        //Calculate the angles from the gyro
+        gyroXangle+=rate_gyr_x*DT;
+        gyroYangle+=rate_gyr_y*DT;
+        gyroZangle+=rate_gyr_z*DT;
+
+        //Convert Accelerometer values to degrees
+        AccXangle = (float) (atan2(accRaw[1],accRaw[2])+M_PI)*RAD_TO_DEG;
+        AccYangle = (float) (atan2(accRaw[2],accRaw[0])+M_PI)*RAD_TO_DEG;
+
+        //Change the rotation value of the accelerometer to -/+ 180 and move the
+        //Y axis '0' point to up. (Code depends on how IMU is mounted)
+        //If IMU is upside down
+        
+        if (AccXangle >180)
+        {
+           AccXangle -= (float)360.0;
+        }
+
+        AccYangle-=90;
+        if (AccYangle >180)
+        {
+           AccYangle -= (float)360.0;
+        }
+           
+
+/*
+        //If IMU is up the correct way, use these lines
+        AccXangle -= (float)180.0;
+        if (AccYangle > 90)
+        {
+            AccYangle -= (float)270;
+        }
+        else
+        {
+            AccYangle += (float)90;
+        }
+*/
+
+        //Complementary filter used to combine the accelerometer and gyro values.
+        CFangleX = AA * (CFangleX+rate_gyr_x*DT) +(1 - AA) * AccXangle;
+        CFangleY = AA * (CFangleY+rate_gyr_y*DT) +(1 - AA) * AccYangle;
+
+        biasLoopCount++;
+        if (biasLoopCount >= 400 && biasLoopCount < 600)
+        {
+            CFangleX_bias += CFangleX;
+            CFangleY_bias += CFangleY;
+        }
+        else if (biasLoopCount == 601)
+        {
+            CFangleX_biasAverage = CFangleX_bias/(599-400);
+            CFangleY_biasAverage = CFangleY_bias/(599-400);
+        }
+
+
+        //Each loop should be at least 20ms - imu can only read at this rate
         while(myMillis() - loopStartInt < (DT*1000))
         {
             usleep(100); //arg in microsec
         }
 
-        //writing accRaw[0], accRaw[1], accRaw[2]
-        //then gyrRaw[0], gyrRaw[1], gyrRaw[2]
-        //then the time difference from before the while loop in milliseconds
-        fprintf(theFile, "%d %d %d %d %d %d %d\n", accRaw[0], accRaw[1], accRaw[2], gyrRaw[0], gyrRaw[1], gyrRaw[2], (myMillis() - beginInt));
+        //fprintf(theFile, "%7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %d\n", gyroXangle, gyroYangle, AccXangle, AccYangle, CFangleX, CFangleY, (myMillis() - beginInt));
+        printf("%d: %7.3f %7.3f %7.3f %7.3f\n", biasLoopCount++, CFangleX, CFangleX_biasAverage, CFangleY, CFangleY_biasAverage);
 
-    }
+        
+}
 
     // fclose file that was opened
     return fclose(theFile);
