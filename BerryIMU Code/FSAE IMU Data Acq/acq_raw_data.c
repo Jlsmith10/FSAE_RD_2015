@@ -1,3 +1,9 @@
+/*
+ *  Inspired by Mark Williams' tutorial of ozzmaker.com (creators of BerryIMU)
+ *
+ *  Modified by: Niral Pathak, James Smith, Saurabh Kulkarni
+ */
+
 #include <unistd.h>
 #include <math.h>
 #include <signal.h>
@@ -66,10 +72,11 @@ int main(int argc, char *argv[])
     enableIMU();
     gettimeofday(&tvBegin, NULL);
 
-
+    // this is for naming the file based on the date of the RPi
     time_t fileNameTimer = time(NULL);
     struct tm tm = *localtime(&fileNameTimer);
     
+    //concatenate the date into a .txt file name
     char buf[28];//worst case date
     sprintf(buf, "dataFiles/");
     sprintf(buf, "%s%d-", buf, tm.tm_mon+1);
@@ -82,6 +89,7 @@ int main(int argc, char *argv[])
 
     theFile = fopen(buf, "w");
     
+    //beginInt represents the start of IMU data acq
     int loopStartInt  = myMillis();
     int beginInt = myMillis();
 
@@ -139,6 +147,10 @@ int main(int argc, char *argv[])
         CFangleX = AA * (CFangleX+rate_gyr_x*DT) +(1 - AA) * AccXangle;
         CFangleY = AA * (CFangleY+rate_gyr_y*DT) +(1 - AA) * AccYangle;
 
+
+        //calculate the bias with initial measurements allowing for 10 seconds
+        //of bootup for the IMU 
+
         biasLoopCount++;
         if (biasLoopCount >= 400 && biasLoopCount < 600)
         {
@@ -164,7 +176,6 @@ int main(int argc, char *argv[])
             gyroXangle, gyroYangle, AccXangle, AccYangle,
             CFangleX - CFangleX_biasAverage, CFangleY - CFangleY_biasAverage,
             (myMillis() - beginInt));
-        //printf("%d: %7.3f %7.3f\n", biasLoopCount, CFangleX - CFangleX_biasAverage, CFangleY - CFangleY_biasAverage);
 
         
 }
@@ -172,4 +183,3 @@ int main(int argc, char *argv[])
     // fclose file that was opened
     return fclose(theFile);
 }
-
